@@ -45,6 +45,12 @@ from conduit.services.spending_limiter import (
 )
 from conduit.services.skill_executor import execute_skill_webhook, SkillExecutionError
 from conduit.services.anomaly_detector import check_for_anomalies, get_anomaly_summary
+from conduit.services.rating_integrity import (
+    validate_rating,
+    check_provider_rating_concentration,
+    calculate_weighted_rating,
+    RatingIntegrityError,
+)
 from conduit.services.macaroon_auth import (
     check_tool_permission,
     initialize_root_session,
@@ -1191,7 +1197,7 @@ async def _confirm_skill_execution(arguments: dict) -> list[TextContent]:
 
 
 async def _submit_rating(arguments: dict) -> list[TextContent]:
-    """Submit a rating for a skill execution."""
+    """Submit a rating for a skill execution (with integrity checks)."""
     exec_id = arguments["execution_id"]
     score = arguments["score"]
     preimage = arguments["payment_preimage"]
@@ -1214,42 +1220,55 @@ async def _submit_rating(arguments: dict) -> list[TextContent]:
         if not execution:
             return [TextContent(type="text", text=f"Execution not found: {exec_id}")]
 
+        # Look up the skill
+        skill_result = await session.execute(
+            select(Skill).where(Skill.id == execution.skill_id)
+        )
+        skill = skill_result.scalar_one_or_none()
+
+        # --- Integrity checks ---
+        try:
+            await validate_rating(session, execution, preimage, skill)
+        except RatingIntegrityError as e:
+            return [TextContent(type="text", text=f"Rating rejected: {e}")]
+
         # Store rating
         rating = Rating(
             execution_id=execution.id,
             score=score,
             comment=comment,
             payment_preimage=preimage,
+            rater_name=execution.consumer_name,
         )
         session.add(rating)
 
-        # Update skill average rating
-        skill_result = await session.execute(
-            select(Skill).where(Skill.id == execution.skill_id)
-        )
-        skill = skill_result.scalar_one_or_none()
+        # Update skill with weighted average rating
         if skill:
-            # Calculate new average from all ratings for this skill
-            avg_stmt = (
-                select(sa_func.avg(Rating.score))
-                .join(SkillExecution, Rating.execution_id == SkillExecution.id)
-                .where(SkillExecution.skill_id == skill.id)
+            # Flush the new rating so it's visible to the weighted calc
+            await session.flush()
+            weighted_avg = await calculate_weighted_rating(session, skill.id)
+            skill.avg_rating = weighted_avg
+
+            # Check for rating concentration (one consumer dominating reviews)
+            concentration_flag = await check_provider_rating_concentration(
+                session, skill, execution.consumer_name,
             )
-            avg_result = await session.execute(avg_stmt)
-            new_avg = avg_result.scalar() or score
-            skill.avg_rating = float(new_avg)
+            if concentration_flag:
+                session.add(concentration_flag)
 
         await session.commit()
 
         skill_name = skill.name if skill else "Unknown"
+        weighted_note = f" (weighted avg: {skill.avg_rating}/5.0)" if skill else ""
         return [TextContent(
             type="text",
             text=(
                 f"Rating Submitted!\n"
-                f"Skill: {skill_name}\n"
+                f"Skill: {skill_name}{weighted_note}\n"
                 f"Score: {'★' * score}{'☆' * (5 - score)} ({score}/5)\n"
                 f"Comment: {comment or '(none)'}\n"
-                f"Verified by payment proof: {preimage[:16]}..."
+                f"Verified by payment proof: {preimage[:16]}...\n"
+                f"\nIntegrity checks passed: preimage verified, no duplicates, timing OK."
             ),
         )]
 
