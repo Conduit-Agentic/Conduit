@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # --- App ---
     app_name: str = "Conduit"
     app_env: str = "development"
-    debug: bool = True
+    debug: bool = False
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 

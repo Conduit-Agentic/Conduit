@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import ForeignKey, Integer, String, Text, CheckConstraint
+from sqlalchemy import ForeignKey, Integer, String, Text, CheckConstraint, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -39,6 +39,7 @@ class Rating(Base):
     # Constraints
     __table_args__ = (
         CheckConstraint("score >= 1 AND score <= 5", name="valid_score_range"),
+        UniqueConstraint("execution_id", name="one_rating_per_execution"),
     )
 
     # Relationships
