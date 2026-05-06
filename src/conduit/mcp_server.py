@@ -51,6 +51,7 @@ from conduit.services.rating_integrity import (
     calculate_weighted_rating,
     RatingIntegrityError,
 )
+from conduit.services.rate_limiter import rate_limiter, RateLimitExceeded
 from conduit.services.macaroon_auth import (
     check_tool_permission,
     initialize_root_session,
@@ -523,6 +524,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             check_tool_permission(name)
         except PermissionError as e:
             return [TextContent(type="text", text=f"ACCESS DENIED: {e}")]
+
+        # --- Rate limiting ---
+        try:
+            rate_limiter.check(name)
+        except RateLimitExceeded as e:
+            return [TextContent(type="text", text=f"RATE LIMITED: {e}")]
 
         # --- Lightning Tools ---
         if name in ("get_node_info", "get_balance", "create_invoice",
