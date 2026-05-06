@@ -58,6 +58,23 @@ class Skill(Base):
     avg_rating: Mapped[float] = mapped_column(Numeric(3, 2), default=0.0)
     avg_response_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Verification
+    verification_status: Mapped[str] = mapped_column(
+        String(20), default="unverified"
+    )  # "unverified", "node_verified", "domain_verified", "fully_verified"
+    verified_node_pubkey: Mapped[str | None] = mapped_column(
+        String(66), nullable=True
+    )  # pubkey that signed the challenge
+    verified_domain: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # domain that passed DNS/well-known check
+    verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    verification_challenge: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # active challenge token (cleared after verification)
+
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 

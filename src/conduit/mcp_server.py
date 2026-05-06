@@ -52,6 +52,14 @@ from conduit.services.rating_integrity import (
     RatingIntegrityError,
 )
 from conduit.services.rate_limiter import rate_limiter, RateLimitExceeded
+from conduit.services.provider_verification import (
+    start_node_verification,
+    start_domain_verification,
+    verify_node_signature,
+    verify_domain,
+    get_verification_status,
+    VerificationError,
+)
 from conduit.services.macaroon_auth import (
     check_tool_permission,
     initialize_root_session,
@@ -501,6 +509,88 @@ async def list_tools() -> list[Tool]:
                 "required": ["execution_id", "score", "payment_preimage"],
             },
         ),
+
+        # --- Verification Tools ---
+        Tool(
+            name="request_verification",
+            description=(
+                "Start provider verification for a skill. Choose 'node' to prove "
+                "you control a Lightning node (sign a challenge with lncli), or "
+                "'domain' to prove you control a domain (host a challenge file). "
+                "Returns the challenge to complete."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "skill_id": {
+                        "type": "string",
+                        "description": "The skill to verify",
+                    },
+                    "method": {
+                        "type": "string",
+                        "description": "Verification method: 'node' or 'domain'",
+                        "enum": ["node", "domain"],
+                    },
+                    "domain": {
+                        "type": "string",
+                        "description": "Domain to verify (required if method is 'domain')",
+                        "default": "",
+                    },
+                },
+                "required": ["skill_id", "method"],
+            },
+        ),
+        Tool(
+            name="submit_verification",
+            description=(
+                "Complete a pending verification. For 'node' method, submit the "
+                "signature from `lncli signmessage`. For 'domain' method, call "
+                "this after placing the challenge at the well-known URL."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "skill_id": {
+                        "type": "string",
+                        "description": "The skill being verified",
+                    },
+                    "method": {
+                        "type": "string",
+                        "description": "Verification method: 'node' or 'domain'",
+                        "enum": ["node", "domain"],
+                    },
+                    "signature": {
+                        "type": "string",
+                        "description": "Node signature (required for 'node' method)",
+                        "default": "",
+                    },
+                    "domain": {
+                        "type": "string",
+                        "description": "Domain to check (required for 'domain' method)",
+                        "default": "",
+                    },
+                },
+                "required": ["skill_id", "method"],
+            },
+        ),
+        Tool(
+            name="get_verification_status",
+            description=(
+                "Check the verification status of a skill. Shows whether the "
+                "provider has been verified via Lightning node proof, domain "
+                "proof, both, or neither."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "skill_id": {
+                        "type": "string",
+                        "description": "The skill to check",
+                    },
+                },
+                "required": ["skill_id"],
+            },
+        ),
     ]
 
 
@@ -559,6 +649,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return await _confirm_skill_execution(arguments)
         elif name == "submit_rating":
             return await _submit_rating(arguments)
+
+        # --- Verification Tools ---
+        elif name == "request_verification":
+            return await _request_verification(arguments)
+        elif name == "submit_verification":
+            return await _submit_verification(arguments)
+        elif name == "get_verification_status":
+            return await _get_verification_status(arguments)
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
@@ -919,10 +1017,17 @@ async def _discover_skills(arguments: dict) -> list[TextContent]:
 
     lines = [f"Found {len(skills)} skill(s):\n"]
     for s in skills:
+        badge = ""
+        if s.verification_status == "fully_verified":
+            badge = " [verified: node + domain]"
+        elif s.verification_status == "node_verified":
+            badge = " [verified: node]"
+        elif s.verification_status == "domain_verified":
+            badge = " [verified: domain]"
         lines.append(
-            f"  [{str(s.id)[:8]}...] {s.name}\n"
+            f"  [{str(s.id)}] {s.name}\n"
             f"    Category: {s.category} | Price: {s.price_sats} sats\n"
-            f"    Provider: {s.provider_name}\n"
+            f"    Provider: {s.provider_name}{badge}\n"
             f"    {s.description[:100]}\n"
         )
 
@@ -1278,6 +1383,138 @@ async def _submit_rating(arguments: dict) -> list[TextContent]:
                 f"\nIntegrity checks passed: preimage verified, no duplicates, timing OK."
             ),
         )]
+
+
+# =============================================================================
+# Verification Handlers
+# =============================================================================
+
+
+async def _request_verification(arguments: dict) -> list[TextContent]:
+    """Start a verification challenge for a skill provider."""
+    skill_id = arguments["skill_id"]
+    method = arguments["method"]
+    domain = arguments.get("domain", "")
+
+    async with async_session_factory() as session:
+        try:
+            if method == "node":
+                challenge = await start_node_verification(session, skill_id)
+                return [TextContent(
+                    type="text",
+                    text=(
+                        f"Node Verification Challenge\n"
+                        f"──────────────────────────────\n"
+                        f"Sign this message with your Lightning node:\n\n"
+                        f"  lncli signmessage \"{challenge}\"\n\n"
+                        f"Then call submit_verification with the signature.\n"
+                        f"This proves you control the node's private key."
+                    ),
+                )]
+            elif method == "domain":
+                if not domain:
+                    return [TextContent(
+                        type="text",
+                        text="Domain is required for domain verification.",
+                    )]
+                challenge = await start_domain_verification(session, skill_id, domain)
+                return [TextContent(
+                    type="text",
+                    text=(
+                        f"Domain Verification Challenge\n"
+                        f"──────────────────────────────\n"
+                        f"Place this text at:\n"
+                        f"  https://{domain}/.well-known/conduit-verify.txt\n\n"
+                        f"Content:\n  {challenge}\n\n"
+                        f"Then call submit_verification with method='domain' "
+                        f"and domain='{domain}'."
+                    ),
+                )]
+            else:
+                return [TextContent(type="text", text=f"Unknown method: {method}")]
+        except VerificationError as e:
+            return [TextContent(type="text", text=f"Verification error: {e}")]
+
+
+async def _submit_verification(arguments: dict) -> list[TextContent]:
+    """Complete a pending verification."""
+    skill_id = arguments["skill_id"]
+    method = arguments["method"]
+
+    async with async_session_factory() as session:
+        try:
+            if method == "node":
+                signature = arguments.get("signature", "")
+                if not signature:
+                    return [TextContent(
+                        type="text",
+                        text="Signature is required for node verification.",
+                    )]
+                result = await verify_node_signature(session, skill_id, signature, lnd=get_lnd())
+                badge = "🟢" if result["status"] == "fully_verified" else "🔵"
+                return [TextContent(
+                    type="text",
+                    text=(
+                        f"{badge} Node Verified!\n"
+                        f"Skill: {result['skill_name']} by {result['provider']}\n"
+                        f"Node pubkey: {result['pubkey']}\n"
+                        f"Status: {result['status']}\n\n"
+                        f"This skill is now backed by a real Lightning node."
+                    ),
+                )]
+            elif method == "domain":
+                domain = arguments.get("domain", "")
+                if not domain:
+                    return [TextContent(
+                        type="text",
+                        text="Domain is required for domain verification.",
+                    )]
+                result = await verify_domain(session, skill_id, domain)
+                badge = "🟢" if result["status"] == "fully_verified" else "🌐"
+                return [TextContent(
+                    type="text",
+                    text=(
+                        f"{badge} Domain Verified!\n"
+                        f"Skill: {result['skill_name']} by {result['provider']}\n"
+                        f"Domain: {result['domain']}\n"
+                        f"Status: {result['status']}\n\n"
+                        f"This provider has proven control of {result['domain']}."
+                    ),
+                )]
+            else:
+                return [TextContent(type="text", text=f"Unknown method: {method}")]
+        except VerificationError as e:
+            return [TextContent(type="text", text=f"Verification failed: {e}")]
+
+
+async def _get_verification_status(arguments: dict) -> list[TextContent]:
+    """Get verification status for a skill."""
+    skill_id = arguments["skill_id"]
+
+    async with async_session_factory() as session:
+        try:
+            status = await get_verification_status(session, skill_id)
+
+            badges = []
+            if status["verified_node_pubkey"]:
+                badges.append(f"🔵 Node: {status['verified_node_pubkey'][:16]}...")
+            if status["verified_domain"]:
+                badges.append(f"🌐 Domain: {status['verified_domain']}")
+            if not badges:
+                badges.append("⚪ Unverified")
+
+            return [TextContent(
+                type="text",
+                text=(
+                    f"Verification Status: {status['skill_name']}\n"
+                    f"Provider: {status['provider']}\n"
+                    f"Status: {status['verification_status']}\n"
+                    f"{''.join(chr(10) + b for b in badges)}\n"
+                    f"{'Verified: ' + status['verified_at'] if status['verified_at'] else ''}"
+                ),
+            )]
+        except VerificationError as e:
+            return [TextContent(type="text", text=f"Error: {e}")]
 
 
 # =============================================================================

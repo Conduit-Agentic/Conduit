@@ -258,6 +258,31 @@ class LndClient:
             "memo": response.memo,
         }
 
+    def sign_message(self, message: str) -> str:
+        """
+        Sign a message with this node's private key.
+        Returns the base64-encoded signature.
+        """
+        assert self._stub, "Not connected — call connect() first"
+        request = ln.SignMessageRequest(msg=message.encode("utf-8"))
+        response = self._stub.SignMessage(request, metadata=self._metadata())
+        return response.signature
+
+    def verify_message(self, message: str, signature: str) -> dict:
+        """
+        Verify a signed message. Returns the signer's pubkey if valid.
+        """
+        assert self._stub, "Not connected — call connect() first"
+        request = ln.VerifyMessageRequest(
+            msg=message.encode("utf-8"),
+            signature=signature,
+        )
+        response = self._stub.VerifyMessage(request, metadata=self._metadata())
+        return {
+            "valid": response.valid,
+            "pubkey": response.pubkey,
+        }
+
 
 # Singleton instance
 lnd_client = LndClient()

@@ -37,6 +37,11 @@ TOOL_RATE_LIMITS: dict[str, tuple[int, timedelta]] = {
     "confirm_skill_execution": (10, timedelta(minutes=1)),
     "submit_rating": (10, timedelta(minutes=1)),
 
+    # Verification — moderate limits
+    "request_verification": (10, timedelta(minutes=10)),
+    "submit_verification": (10, timedelta(minutes=10)),
+    "get_verification_status": (60, timedelta(minutes=1)),
+
     # Security/admin — tight limits
     "create_macaroon": (5, timedelta(minutes=10)),
 
