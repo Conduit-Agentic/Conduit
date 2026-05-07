@@ -188,20 +188,36 @@ class LndClient:
         )
         response = self._stub.SendPaymentSync(request, metadata=self._metadata())
 
+        # Check for success first: if we got a preimage, the payment worked
+        # regardless of what payment_error says (some LND versions set both)
+        preimage_hex = response.payment_preimage.hex() if response.payment_preimage else ""
+        payment_hash_hex = response.payment_hash.hex() if response.payment_hash else ""
+
+        if preimage_hex and preimage_hex != "0" * 64:
+            # Got a real preimage — payment succeeded
+            return PaymentResponse(
+                payment_hash=payment_hash_hex,
+                preimage=preimage_hex,
+                fee_msats=int(response.payment_route.total_fees_msat) if response.payment_route else 0,
+                status="SUCCEEDED",
+            )
+
         if response.payment_error:
             return PaymentResponse(
-                payment_hash=response.payment_hash.hex(),
+                payment_hash=payment_hash_hex,
                 preimage="",
                 fee_msats=0,
                 status="FAILED",
                 failure_reason=response.payment_error,
             )
 
+        # No preimage and no error — shouldn't happen but treat as failure
         return PaymentResponse(
-            payment_hash=response.payment_hash.hex(),
-            preimage=response.payment_preimage.hex(),
-            fee_msats=int(response.payment_route.total_fees_msat) if response.payment_route else 0,
-            status="SUCCEEDED",
+            payment_hash=payment_hash_hex,
+            preimage="",
+            fee_msats=0,
+            status="FAILED",
+            failure_reason="No preimage returned and no error reported",
         )
 
     def get_balance(self) -> dict[str, int]:
