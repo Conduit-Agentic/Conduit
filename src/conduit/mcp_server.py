@@ -755,28 +755,34 @@ async def _handle_lightning_tool(name: str, arguments: dict) -> list[TextContent
             max_fee_msats=max_fee_sats * 1000,
         )
         if result.status == "SUCCEEDED":
-            # Record successful spend
-            await record_successful_payment(
-                amount_sats=amount_sats,
-                tool_name="pay_invoice",
-                description=description,
-                payment_hash=result.payment_hash,
-            )
-            # Run anomaly detection
-            anomalies = await check_for_anomalies(
-                payment_hash=result.payment_hash,
-                amount_sats=amount_sats,
-            )
+            # Post-payment bookkeeping (non-critical — payment already sent)
             anomaly_note = ""
-            if anomalies:
-                anomaly_note = (
-                    f"\n\nAnomaly Detection: {len(anomalies)} flag(s) raised\n"
-                    + "\n".join(f"  [{f.severity.upper()}] {f.flag_type}: {f.description}" for f in anomalies)
+            try:
+                await record_successful_payment(
+                    amount_sats=amount_sats,
+                    tool_name="pay_invoice",
+                    description=description,
+                    payment_hash=result.payment_hash,
                 )
+                anomalies = await check_for_anomalies(
+                    payment_hash=result.payment_hash,
+                    amount_sats=amount_sats,
+                )
+                if anomalies:
+                    anomaly_note = (
+                        f"\n\nAnomaly Detection: {len(anomalies)} flag(s) raised\n"
+                        + "\n".join(f"  [{f.severity.upper()}] {f.flag_type}: {f.description}" for f in anomalies)
+                    )
+            except Exception as bookkeeping_err:
+                import sys
+                print(f"[pay_invoice] Bookkeeping error (payment DID succeed): {bookkeeping_err}", file=sys.stderr)
+                anomaly_note = f"\n\n(Note: spending log write failed: {bookkeeping_err})"
+
             return [TextContent(
                 type="text",
                 text=(
                     f"Payment Successful!\n"
+                    f"Amount: {amount_sats:,} sats\n"
                     f"Payment Hash: {result.payment_hash}\n"
                     f"Preimage (proof): {result.preimage}\n"
                     f"Routing Fee: {result.fee_msats / 1000:.1f} sats"
