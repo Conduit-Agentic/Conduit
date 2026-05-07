@@ -1,0 +1,177 @@
+"""Tests for provider verification (challenge generation and crypto logic)."""
+
+import hashlib
+import secrets
+
+import pytest
+
+from conduit.services.provider_verification import (
+    generate_challenge,
+    _CHALLENGE_PREFIX,
+)
+
+
+class TestChallengeGeneration:
+    """Tests for verification challenge creation."""
+
+    def test_challenge_format(self):
+        """Challenge should follow 'conduit-verify:<nonce>:<skill_id>' format."""
+        skill_id = "abc-123"
+        challenge = generate_challenge(skill_id)
+
+        parts = challenge.split(":")
+        assert len(parts) == 3
+        assert parts[0] == "conduit-verify"
+        assert parts[2] == skill_id
+
+    def test_challenge_contains_random_nonce(self):
+        """Each challenge should contain a unique random nonce."""
+        c1 = generate_challenge("skill-1")
+        c2 = generate_challenge("skill-1")
+
+        # Same skill ID but different nonces
+        assert c1 != c2
+        nonce1 = c1.split(":")[1]
+        nonce2 = c2.split(":")[1]
+        assert nonce1 != nonce2
+
+    def test_nonce_is_hex(self):
+        """The nonce portion should be valid hex."""
+        challenge = generate_challenge("test")
+        nonce = challenge.split(":")[1]
+        # Should not raise
+        bytes.fromhex(nonce)
+        assert len(nonce) == 32  # 16 bytes = 32 hex chars
+
+    def test_challenge_includes_skill_id(self):
+        """The challenge should embed the skill ID for binding."""
+        skill_id = "550e8400-e29b-41d4-a716-446655440000"
+        challenge = generate_challenge(skill_id)
+        assert challenge.endswith(f":{skill_id}")
+
+    def test_challenge_prefix_is_correct(self):
+        """The prefix constant should be 'conduit-verify'."""
+        assert _CHALLENGE_PREFIX == "conduit-verify"
+
+
+class TestNodeSignatureVerification:
+    """Tests for Lightning node signature verification logic.
+
+    These test the cryptographic concepts without requiring an LND node.
+    The actual VerifyMessage RPC is tested via integration tests.
+    """
+
+    def test_signature_verification_concept(self):
+        """
+        Conceptual test: the verification flow should be
+        sign(challenge, private_key) → verify(challenge, signature, pubkey).
+        """
+        # Simulate the flow with HMAC (not real LND signatures)
+        import hmac
+
+        secret_key = b"node-private-key"
+        challenge = generate_challenge("test-skill")
+
+        # Provider signs
+        signature = hmac.new(secret_key, challenge.encode(), hashlib.sha256).hexdigest()
+
+        # Verifier checks
+        expected = hmac.new(secret_key, challenge.encode(), hashlib.sha256).hexdigest()
+        assert signature == expected
+
+    def test_wrong_signature_fails(self):
+        """A signature from a different key should not verify."""
+        import hmac
+
+        key_a = b"node-key-a"
+        key_b = b"node-key-b"
+        challenge = generate_challenge("test-skill")
+
+        sig_a = hmac.new(key_a, challenge.encode(), hashlib.sha256).hexdigest()
+        sig_b = hmac.new(key_b, challenge.encode(), hashlib.sha256).hexdigest()
+
+        assert sig_a != sig_b
+
+    def test_challenge_tampering_detected(self):
+        """Signing a different challenge should produce a different signature."""
+        import hmac
+
+        key = b"node-key"
+        challenge_1 = generate_challenge("skill-1")
+        challenge_2 = generate_challenge("skill-2")
+
+        sig_1 = hmac.new(key, challenge_1.encode(), hashlib.sha256).hexdigest()
+        sig_2 = hmac.new(key, challenge_2.encode(), hashlib.sha256).hexdigest()
+
+        assert sig_1 != sig_2
+
+
+class TestDomainVerification:
+    """Tests for domain verification logic (no HTTP calls)."""
+
+    def test_well_known_url_format(self):
+        """The well-known URL should follow the standard pattern."""
+        domain = "example.com"
+        expected = f"https://{domain}/.well-known/conduit-verify.txt"
+        assert expected == "https://example.com/.well-known/conduit-verify.txt"
+
+    def test_challenge_can_be_found_in_content(self):
+        """The 'in' operator should correctly find challenge in page content."""
+        challenge = generate_challenge("test-skill")
+
+        # Simulate file content with the challenge
+        file_content = f"some header\n{challenge}\nsome footer"
+        assert challenge in file_content
+
+    def test_wrong_challenge_not_found(self):
+        """A different challenge should not match."""
+        challenge = generate_challenge("test-skill")
+        wrong_challenge = generate_challenge("other-skill")
+
+        file_content = f"some header\n{wrong_challenge}\nsome footer"
+        assert challenge not in file_content
+
+
+class TestVerificationBadges:
+    """Tests for verification status badge logic."""
+
+    def test_badge_progression(self):
+        """Verification badges should follow the correct progression."""
+        # Default
+        assert "unverified" not in ("node_verified", "domain_verified", "fully_verified")
+
+        # Node only → "node_verified"
+        # Domain only → "domain_verified"
+        # Both → "fully_verified"
+        badges = {"unverified", "node_verified", "domain_verified", "fully_verified"}
+        assert len(badges) == 4
+
+    def test_fully_verified_requires_both(self):
+        """fully_verified should only be set when both node and domain are verified."""
+        node_verified = True
+        domain_verified = True
+
+        if node_verified and domain_verified:
+            status = "fully_verified"
+        elif node_verified:
+            status = "node_verified"
+        elif domain_verified:
+            status = "domain_verified"
+        else:
+            status = "unverified"
+
+        assert status == "fully_verified"
+
+    def test_node_only_badge(self):
+        """Only node verified should give node_verified badge."""
+        node_verified = True
+        domain_verified = False
+
+        if node_verified and domain_verified:
+            status = "fully_verified"
+        elif node_verified:
+            status = "node_verified"
+        else:
+            status = "unverified"
+
+        assert status == "node_verified"

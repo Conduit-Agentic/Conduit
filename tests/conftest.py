@@ -1,14 +1,21 @@
-"""Shared test fixtures."""
+"""Shared test fixtures for Conduit tests.
 
-import pytest
-from httpx import ASGITransport, AsyncClient
+Sets environment variables before any conduit module is imported,
+preventing the database engine from trying to connect to PostgreSQL.
+"""
 
-from conduit.main import app
+import os
+import sys
+from unittest.mock import MagicMock
 
+# Set test environment before importing any conduit modules
+os.environ.setdefault("CONDUIT_API_KEY", "test-api-key-for-unit-tests")
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
+os.environ.setdefault("DEBUG", "false")
 
-@pytest.fixture
-async def client():
-    """Async HTTP client for testing FastAPI endpoints."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
+# Mock the database module so imports don't trigger engine creation
+# when PostgreSQL isn't available (unit tests only)
+if "conduit.core.database" not in sys.modules:
+    mock_db = MagicMock()
+    mock_db.async_session_factory = MagicMock()
+    sys.modules["conduit.core.database"] = mock_db
