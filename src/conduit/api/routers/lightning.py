@@ -1,0 +1,213 @@
+"""Lightning Network endpoints — mirrors MCP Lightning tools over HTTP.
+
+6 endpoints:
+  GET  /api/v1/lightning/node-info
+  GET  /api/v1/lightning/balance
+  POST /api/v1/lightning/invoices
+  POST /api/v1/lightning/invoices/decode
+  POST /api/v1/lightning/payments
+  GET  /api/v1/lightning/payments/{payment_hash}
+"""
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from conduit.api.deps import verify_api_key, get_lnd
+from conduit.services.spending_limiter import (
+    check_spending_limits,
+    record_successful_payment,
+    SpendingLimitExceeded,
+    ConfirmationRequired,
+    get_spending_summary,
+)
+from conduit.services.anomaly_detector import check_for_anomalies
+from conduit.services.rate_limiter import rate_limiter, RateLimitExceeded
+
+router = APIRouter(
+    prefix="/lightning",
+    tags=["lightning"],
+    dependencies=[Depends(verify_api_key)],
+)
+
+
+# ── Request / Response models ─────────────────────────────────────────
+
+
+class CreateInvoiceRequest(BaseModel):
+    amount_sats: int = Field(..., gt=0, description="Invoice amount in satoshis")
+    memo: str = Field(default="", description="Human-readable description")
+    expiry_seconds: int = Field(default=3600, description="Seconds until invoice expires")
+
+
+class PayInvoiceRequest(BaseModel):
+    payment_request: str = Field(..., description="BOLT-11 encoded invoice")
+    max_fee_sats: int = Field(default=10, description="Maximum routing fee in sats")
+    confirmed: bool = Field(default=False, description="Set true to bypass confirmation prompt")
+
+
+class DecodeInvoiceRequest(BaseModel):
+    payment_request: str = Field(..., description="BOLT-11 encoded invoice to decode")
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────
+
+
+@router.get("/node-info")
+async def get_node_info():
+    """Get Lightning node info — alias, pubkey, channels, sync status."""
+    try:
+        rate_limiter.check("get_node_info")
+    except RateLimitExceeded as e:
+        raise HTTPException(status_code=429, detail=str(e))
+
+    lnd = get_lnd()
+    info = lnd.get_info()
+    return {
+        "alias": info.alias,
+        "pubkey": info.pubkey,
+        "num_active_channels": info.num_active_channels,
+        "num_peers": info.num_peers,
+        "block_height": info.block_height,
+        "synced_to_chain": info.synced_to_chain,
+        "version": info.version,
+    }
+
+
+@router.get("/balance")
+async def get_balance():
+    """Get channel and on-chain balances in satoshis."""
+    try:
+        rate_limiter.check("get_balance")
+    except RateLimitExceeded as e:
+        raise HTTPException(status_code=429, detail=str(e))
+
+    lnd = get_lnd()
+    bal = lnd.get_balance()
+    return bal
+
+
+@router.post("/invoices")
+async def create_invoice(req: CreateInvoiceRequest):
+    """Create a Lightning invoice for receiving payment."""
+    try:
+        rate_limiter.check("create_invoice")
+    except RateLimitExceeded as e:
+        raise HTTPException(status_code=429, detail=str(e))
+
+    lnd = get_lnd()
+    invoice = lnd.create_invoice(
+        amount_msats=req.amount_sats * 1000,
+        memo=req.memo,
+        expiry=req.expiry_seconds,
+    )
+    return {
+        "payment_request": invoice.payment_request,
+        "payment_hash": invoice.payment_hash,
+        "amount_sats": req.amount_sats,
+    }
+
+
+@router.post("/invoices/decode")
+async def decode_invoice(req: DecodeInvoiceRequest):
+    """Decode a BOLT-11 invoice without paying it."""
+    try:
+        rate_limiter.check("decode_invoice")
+    except RateLimitExceeded as e:
+        raise HTTPException(status_code=429, detail=str(e))
+
+    lnd = get_lnd()
+    decoded = lnd.decode_invoice(req.payment_request)
+    return decoded
+
+
+@router.post("/payments")
+async def pay_invoice(req: PayInvoiceRequest):
+    """Pay a Lightning invoice (with spending limit enforcement)."""
+    try:
+        rate_limiter.check("pay_invoice")
+    except RateLimitExceeded as e:
+        raise HTTPException(status_code=429, detail=str(e))
+
+    lnd = get_lnd()
+
+    # Decode to get amount
+    decoded = lnd.decode_invoice(req.payment_request)
+    amount_sats = decoded["amount_sats"]
+    description = decoded.get("description", "") or "Lightning payment"
+
+    # Check spending limits
+    try:
+        await check_spending_limits(
+            amount_sats=amount_sats,
+            tool_name="pay_invoice",
+            description=description,
+            confirmed=req.confirmed,
+        )
+    except SpendingLimitExceeded as e:
+        raise HTTPException(status_code=403, detail={
+            "error": "spending_limit_exceeded",
+            "reason": e.reason,
+            "limit_sats": e.limit_sats,
+            "current_sats": e.current_sats,
+            "requested_sats": e.requested_sats,
+        })
+    except ConfirmationRequired as e:
+        raise HTTPException(status_code=402, detail={
+            "error": "confirmation_required",
+            "amount_sats": e.amount_sats,
+            "threshold_sats": e.threshold_sats,
+            "description": e.description,
+            "message": "Resend with confirmed=true to proceed.",
+        })
+
+    # Execute payment
+    result = lnd.pay_invoice(
+        payment_request=req.payment_request,
+        max_fee_msats=req.max_fee_sats * 1000,
+    )
+
+    if result.status == "SUCCEEDED":
+        # Bookkeeping (non-critical)
+        try:
+            await record_successful_payment(
+                amount_sats=amount_sats,
+                tool_name="pay_invoice",
+                description=description,
+                payment_hash=result.payment_hash,
+            )
+            await check_for_anomalies(
+                payment_hash=result.payment_hash,
+                amount_sats=amount_sats,
+            )
+        except Exception:
+            pass  # Don't fail the response over bookkeeping
+
+        return {
+            "status": "SUCCEEDED",
+            "payment_hash": result.payment_hash,
+            "preimage": result.preimage,
+            "amount_sats": amount_sats,
+            "fee_msats": result.fee_msats,
+        }
+    else:
+        raise HTTPException(status_code=502, detail={
+            "status": "FAILED",
+            "payment_hash": result.payment_hash,
+            "reason": result.failure_reason,
+        })
+
+
+@router.get("/payments/{payment_hash}")
+async def check_payment(payment_hash: str):
+    """Check if a payment has settled."""
+    try:
+        rate_limiter.check("check_payment")
+    except RateLimitExceeded as e:
+        raise HTTPException(status_code=429, detail=str(e))
+
+    lnd = get_lnd()
+    try:
+        result = lnd.lookup_invoice(payment_hash)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Payment not found: {e}")
