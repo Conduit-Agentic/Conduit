@@ -1810,6 +1810,19 @@ async def _nostr_get_profile() -> list[TextContent]:
     except Exception:
         pass
 
+    key_status = "configured (persisted)" if settings.nostr_private_key else "auto-generated (NOT persisted — will change on restart)"
+    persist_note = ""
+    if not settings.nostr_private_key:
+        # Log the nsec to stderr ONLY (server operator's console), never to tool output
+        print(
+            f"[nostr] To persist identity, add to .env:  NOSTR_PRIVATE_KEY={keys.nsec}",
+            file=sys.stderr,
+        )
+        persist_note = (
+            "\n\nWARNING: Key is not persisted. Check the server logs (stderr) "
+            "for the NOSTR_PRIVATE_KEY value to add to your .env file."
+        )
+
     return [TextContent(
         type="text",
         text=(
@@ -1817,12 +1830,11 @@ async def _nostr_get_profile() -> list[TextContent]:
             f"{'=' * 40}\n"
             f"Public Key (hex): {keys.pubkey_hex}\n"
             f"npub: {keys.npub}\n"
-            f"Key source: {'configured' if settings.nostr_private_key else 'auto-generated (save nsec to persist)'}\n"
+            f"Key source: {key_status}\n"
             f"\nConfigured Relays:\n"
             + "\n".join(f"  - {r}" for r in relays)
-            + f"\n\nLocal skills available to publish: {skill_count}\n"
-            f"\nTo persist your identity, add to .env:\n"
-            f"  NOSTR_PRIVATE_KEY={keys.nsec}"
+            + f"\n\nLocal skills available to publish: {skill_count}"
+            f"{persist_note}"
         ),
     )]
 
