@@ -193,8 +193,10 @@ async def start_domain_verification(
     Start domain verification for a skill.
 
     Generates a challenge token the provider must place at either:
-    - https://{domain}/.well-known/conduit-verify.txt
-    - DNS TXT record: _conduit-verify.{domain}
+    - https://{domain}/.well-known/conduit-verify.txt  (file contents = challenge)
+    - DNS TXT record: _conduit-verify.{domain}  (record value = challenge)
+
+    Both methods are checked during verification — provider only needs one.
 
     Returns the challenge token.
     """
@@ -271,10 +273,16 @@ async def verify_domain(
     except httpx.RequestError as e:
         print(f"[verification] Well-known fetch failed for {domain}: {e}", file=sys.stderr)
 
+    # Fall back to DNS TXT record: _conduit-verify.{domain}
+    if not verified:
+        verified = await _check_dns_txt(domain, challenge)
+
     if not verified:
         raise VerificationError(
-            f"Challenge not found at {well_known_url}. "
-            f"The file's contents must be exactly:\n{challenge}"
+            f"Challenge not found. Tried:\n"
+            f"  1. {well_known_url} (file must contain only the challenge)\n"
+            f"  2. DNS TXT record at _conduit-verify.{domain}\n"
+            f"Challenge value:\n{challenge}"
         )
 
     # Update skill
@@ -308,8 +316,15 @@ async def get_verification_status(
     session: AsyncSession,
     skill_id: str,
 ) -> dict:
-    """Get the current verification status for a skill."""
+    """Get the current verification status for a skill.
+
+    Checks for expiry on every status call — if the badge has expired,
+    it is downgraded before returning.
+    """
     skill = await _get_skill(session, skill_id)
+
+    # Check and enforce expiry
+    await enforce_expiry(session, skill)
 
     return {
         "skill_id": str(skill.id),
@@ -321,6 +336,102 @@ async def get_verification_status(
         "verified_at": skill.verified_at.isoformat() if skill.verified_at else None,
         "has_pending_challenge": skill.verification_challenge is not None,
     }
+
+
+# =============================================================================
+# DNS TXT verification
+# =============================================================================
+
+
+async def _check_dns_txt(domain: str, expected_challenge: str) -> bool:
+    """
+    Check for a DNS TXT record at _conduit-verify.{domain}.
+
+    The TXT record value must exactly match the challenge string.
+    Uses the system resolver via asyncio.
+    """
+    import asyncio
+    import socket
+
+    lookup_name = f"_conduit-verify.{domain}"
+    try:
+        # Use getaddrinfo-style resolution to stay async-friendly.
+        # For TXT records we need the lower-level resolver.
+        import dns.resolver
+        answers = dns.resolver.resolve(lookup_name, "TXT")
+        for rdata in answers:
+            # TXT records come as a list of byte strings
+            txt_value = b"".join(rdata.strings).decode("utf-8").strip()
+            if txt_value == expected_challenge:
+                print(
+                    f"[verification] DNS TXT match for {lookup_name}",
+                    file=sys.stderr,
+                )
+                return True
+    except ImportError:
+        # dnspython not installed — skip DNS verification silently.
+        # The well-known URL path is always available.
+        print(
+            "[verification] dnspython not installed — DNS TXT verification unavailable",
+            file=sys.stderr,
+        )
+    except Exception as e:
+        print(
+            f"[verification] DNS TXT lookup failed for {lookup_name}: {e}",
+            file=sys.stderr,
+        )
+
+    return False
+
+
+# =============================================================================
+# Verification expiry
+# =============================================================================
+
+
+def check_verification_expiry(skill: Skill) -> bool:
+    """
+    Check if a skill's verification has expired.
+
+    Returns True if expired (badge should be downgraded), False if still valid.
+    A skill with no verified_at or verification_expiry_days=0 never expires.
+    """
+    from conduit.core.config import settings
+
+    if settings.verification_expiry_days == 0:
+        return False  # expiry disabled
+
+    if not skill.verified_at:
+        return False  # never verified
+
+    if skill.verification_status == "unverified":
+        return False  # nothing to expire
+
+    age = datetime.now(timezone.utc) - skill.verified_at
+    return age > timedelta(days=settings.verification_expiry_days)
+
+
+async def enforce_expiry(session: AsyncSession, skill: Skill) -> bool:
+    """
+    If the skill's verification has expired, downgrade to 'unverified'
+    and clear the badges. Returns True if the badge was expired.
+    """
+    if not check_verification_expiry(skill):
+        return False
+
+    old_status = skill.verification_status
+    skill.verification_status = "expired"
+    skill.verified_node_pubkey = None
+    skill.verified_domain = None
+    skill.verified_at = None
+    await session.commit()
+
+    print(
+        f"[verification] Badge expired for skill {skill.id}: "
+        f"{old_status} → expired",
+        file=sys.stderr,
+    )
+    return True
 
 
 # =============================================================================

@@ -76,6 +76,14 @@ class Settings(BaseSettings):
     # How far back to search for skills on relays (hours)
     nostr_discovery_window_hours: int = 168  # 7 days
 
+    # --- Provider Verification ---
+    # When True, execution of unverified skills is blocked with 403.
+    # When False (default), a warning header is added but execution proceeds.
+    require_verified_skills: bool = False
+    # Number of days before a verification badge expires and must be renewed.
+    # 0 = badges never expire.
+    verification_expiry_days: int = 90
+
     # --- Spending Limits ---
     # Maximum sats for a single outgoing payment (0 = no limit)
     spending_limit_per_payment_sats: int = 10000

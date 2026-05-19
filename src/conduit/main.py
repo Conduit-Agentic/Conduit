@@ -24,6 +24,7 @@ from conduit.core.config import settings
 from conduit.api.deps import get_lnd
 from conduit.api.middleware.l402 import L402Middleware
 from conduit.api.middleware.rate_limit import RateLimitMiddleware
+from conduit.api.middleware.verification import VerificationEnforcementMiddleware
 from conduit.api.routers import lightning, marketplace, security, nostr
 
 
@@ -140,6 +141,14 @@ app.add_middleware(RateLimitMiddleware)
 # L402 middleware — sits between CORS and routing. Only active when
 # L402_ENABLED=true in .env; otherwise passes everything through.
 app.add_middleware(L402Middleware, get_lnd_fn=get_lnd)
+
+# Verification enforcement — warns or blocks execution of unverified skills.
+# Uses async DB session to look up skill verification status.
+from conduit.core.database import async_session_factory
+app.add_middleware(
+    VerificationEnforcementMiddleware,
+    get_session_fn=async_session_factory,
+)
 
 # Mount routers — all under /api/v1
 app.include_router(lightning.router, prefix="/api/v1")
