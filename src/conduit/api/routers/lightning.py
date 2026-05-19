@@ -21,7 +21,6 @@ from conduit.services.spending_limiter import (
     get_spending_summary,
 )
 from conduit.services.anomaly_detector import check_for_anomalies
-from conduit.services.rate_limiter import rate_limiter, RateLimitExceeded
 
 router = APIRouter(
     prefix="/lightning",
@@ -62,11 +61,6 @@ class DecodeInvoiceRequest(BaseModel):
 @router.get("/node-info")
 async def get_node_info():
     """Get Lightning node info — alias, pubkey, channels, sync status."""
-    try:
-        rate_limiter.check("get_node_info")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     lnd = get_lnd()
     info = lnd.get_info()
     return {
@@ -83,11 +77,6 @@ async def get_node_info():
 @router.get("/balance")
 async def get_balance():
     """Get channel and on-chain balances in satoshis."""
-    try:
-        rate_limiter.check("get_balance")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     lnd = get_lnd()
     bal = lnd.get_balance()
     return bal
@@ -96,11 +85,6 @@ async def get_balance():
 @router.post("/invoices")
 async def create_invoice(req: CreateInvoiceRequest):
     """Create a Lightning invoice for receiving payment."""
-    try:
-        rate_limiter.check("create_invoice")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     lnd = get_lnd()
     invoice = lnd.create_invoice(
         amount_msats=req.amount_sats * 1000,
@@ -117,11 +101,6 @@ async def create_invoice(req: CreateInvoiceRequest):
 @router.post("/invoices/decode")
 async def decode_invoice(req: DecodeInvoiceRequest):
     """Decode a BOLT-11 invoice without paying it."""
-    try:
-        rate_limiter.check("decode_invoice")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     lnd = get_lnd()
     decoded = lnd.decode_invoice(req.payment_request)
     return decoded
@@ -130,11 +109,6 @@ async def decode_invoice(req: DecodeInvoiceRequest):
 @router.post("/payments")
 async def pay_invoice(req: PayInvoiceRequest):
     """Pay a Lightning invoice (with spending limit enforcement)."""
-    try:
-        rate_limiter.check("pay_invoice")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     lnd = get_lnd()
 
     # Decode to get amount
@@ -215,11 +189,6 @@ async def pay_invoice(req: PayInvoiceRequest):
 @router.get("/payments/{payment_hash}")
 async def check_payment(payment_hash: str):
     """Check if a payment has settled."""
-    try:
-        rate_limiter.check("check_payment")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     lnd = get_lnd()
     try:
         result = lnd.lookup_invoice(payment_hash)

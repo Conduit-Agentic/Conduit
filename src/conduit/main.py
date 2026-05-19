@@ -23,6 +23,7 @@ from conduit import __version__
 from conduit.core.config import settings
 from conduit.api.deps import get_lnd
 from conduit.api.middleware.l402 import L402Middleware
+from conduit.api.middleware.rate_limit import RateLimitMiddleware
 from conduit.api.routers import lightning, marketplace, security, nostr
 
 
@@ -130,6 +131,11 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "X-API-Key", "Authorization"],
 )
+
+# Rate limiting middleware — maps routes to tool names and enforces
+# per-tool sliding-window limits. Runs before auth so rate-limited
+# requests are rejected cheaply (no LND/DB round-trips).
+app.add_middleware(RateLimitMiddleware)
 
 # L402 middleware — sits between CORS and routing. Only active when
 # L402_ENABLED=true in .env; otherwise passes everything through.

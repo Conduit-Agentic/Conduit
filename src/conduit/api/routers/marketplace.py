@@ -27,7 +27,6 @@ from conduit.services.rating_integrity import (
     check_provider_rating_concentration,
     RatingIntegrityError,
 )
-from conduit.services.rate_limiter import rate_limiter, RateLimitExceeded
 from conduit.services.url_safety import UnsafeURLError, validate_outbound_url
 
 router = APIRouter(
@@ -79,11 +78,6 @@ async def discover_skills(
     session: AsyncSession = Depends(get_session),
 ):
     """Discover skills by keyword, category, or price range."""
-    try:
-        rate_limiter.check("discover_skills")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     query = select(Skill)
     if keyword:
         query = query.where(
@@ -123,11 +117,6 @@ async def get_skill_details(
     session: AsyncSession = Depends(get_session),
 ):
     """Get full details for a skill including ratings."""
-    try:
-        rate_limiter.check("get_skill_details")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     skill = await _get_skill_or_404(session, skill_id)
     weighted_rating = await calculate_weighted_rating(session, skill.id)
 
@@ -155,11 +144,6 @@ async def register_skill(
     session: AsyncSession = Depends(get_session),
 ):
     """Register a new skill on the marketplace."""
-    try:
-        rate_limiter.check("register_skill")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     # If a webhook is provided, validate it now. Conduit will POST the
     # payment preimage to this URL on every execution; we refuse to even
     # store a URL that points at internal services.
@@ -200,11 +184,6 @@ async def request_skill_execution(
     session: AsyncSession = Depends(get_session),
 ):
     """Request execution of a skill — generates an invoice for payment."""
-    try:
-        rate_limiter.check("request_skill_execution")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     skill = await _get_skill_or_404(session, req.skill_id)
 
     # Create invoice if skill has a price
@@ -253,11 +232,6 @@ async def confirm_skill_execution(
     to the buyer at request time, so without the settlement check anyone
     could mark an execution COMPLETED without paying.
     """
-    try:
-        rate_limiter.check("confirm_skill_execution")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     try:
         exec_uuid = uuid.UUID(execution_id)
     except ValueError:
@@ -315,11 +289,6 @@ async def submit_rating(
     session: AsyncSession = Depends(get_session),
 ):
     """Rate a completed skill execution (requires payment preimage proof)."""
-    try:
-        rate_limiter.check("submit_rating")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     try:
         exec_uuid = uuid.UUID(execution_id)
     except ValueError:

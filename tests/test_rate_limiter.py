@@ -11,6 +11,7 @@ from conduit.services.rate_limiter import (
     TOOL_RATE_LIMITS,
     DEFAULT_RATE_LIMIT,
 )
+from conduit.api.middleware.rate_limit import _resolve_tool
 
 
 class TestSlidingWindowRateLimiter:
@@ -158,3 +159,94 @@ class TestSlidingWindowRateLimiter:
         ]
         for tool in expected_tools:
             assert tool in TOOL_RATE_LIMITS, f"Missing rate limit config for {tool}"
+
+
+class TestRateLimitMiddlewareRouting:
+    """Tests for the middleware route → tool name resolution."""
+
+    # Lightning
+    def test_get_node_info(self):
+        assert _resolve_tool("GET", "/api/v1/lightning/node-info") == "get_node_info"
+
+    def test_get_balance(self):
+        assert _resolve_tool("GET", "/api/v1/lightning/balance") == "get_balance"
+
+    def test_create_invoice(self):
+        assert _resolve_tool("POST", "/api/v1/lightning/invoices") == "create_invoice"
+
+    def test_decode_invoice(self):
+        assert _resolve_tool("POST", "/api/v1/lightning/invoices/decode") == "decode_invoice"
+
+    def test_pay_invoice(self):
+        assert _resolve_tool("POST", "/api/v1/lightning/payments") == "pay_invoice"
+
+    def test_check_payment(self):
+        assert _resolve_tool("GET", "/api/v1/lightning/payments/abc123") == "check_payment"
+
+    # Marketplace
+    def test_discover_skills(self):
+        assert _resolve_tool("GET", "/api/v1/marketplace/skills") == "discover_skills"
+
+    def test_register_skill(self):
+        assert _resolve_tool("POST", "/api/v1/marketplace/skills") == "register_skill"
+
+    def test_get_skill_details(self):
+        assert _resolve_tool("GET", "/api/v1/marketplace/skills/some-uuid") == "get_skill_details"
+
+    def test_request_execution(self):
+        assert _resolve_tool("POST", "/api/v1/marketplace/executions") == "request_skill_execution"
+
+    def test_confirm_execution(self):
+        assert _resolve_tool("POST", "/api/v1/marketplace/executions/some-uuid/confirm") == "confirm_skill_execution"
+
+    def test_submit_rating(self):
+        assert _resolve_tool("POST", "/api/v1/marketplace/executions/some-uuid/rate") == "submit_rating"
+
+    # Security
+    def test_spending(self):
+        assert _resolve_tool("GET", "/api/v1/security/spending") == "get_spending_status"
+
+    def test_create_macaroon(self):
+        assert _resolve_tool("POST", "/api/v1/security/macaroons") == "create_macaroon"
+
+    def test_permissions(self):
+        assert _resolve_tool("GET", "/api/v1/security/permissions") == "list_permissions"
+
+    def test_anomalies(self):
+        assert _resolve_tool("GET", "/api/v1/security/anomalies") == "get_anomaly_report"
+
+    def test_verification_request(self):
+        assert _resolve_tool("POST", "/api/v1/security/verification/request") == "request_verification"
+
+    def test_verification_submit(self):
+        assert _resolve_tool("POST", "/api/v1/security/verification/submit") == "submit_verification"
+
+    def test_verification_status(self):
+        assert _resolve_tool("GET", "/api/v1/security/verification/some-uuid") == "get_verification_status"
+
+    # Nostr
+    def test_nostr_publish(self):
+        assert _resolve_tool("POST", "/api/v1/nostr/publish") == "nostr_publish_skill"
+
+    def test_nostr_discover(self):
+        assert _resolve_tool("GET", "/api/v1/nostr/discover") == "nostr_discover_skills"
+
+    def test_nostr_profile(self):
+        assert _resolve_tool("GET", "/api/v1/nostr/profile") == "nostr_get_profile"
+
+    def test_nostr_relay_status(self):
+        assert _resolve_tool("GET", "/api/v1/nostr/relays/status") == "nostr_relay_status"
+
+    # Free routes should not match
+    def test_health_not_matched(self):
+        assert _resolve_tool("GET", "/health") is None
+
+    def test_root_not_matched(self):
+        assert _resolve_tool("GET", "/") is None
+
+    def test_docs_not_matched(self):
+        assert _resolve_tool("GET", "/docs") is None
+
+    # Wrong method should not match
+    def test_wrong_method(self):
+        assert _resolve_tool("DELETE", "/api/v1/lightning/balance") is None

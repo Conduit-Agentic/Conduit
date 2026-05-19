@@ -26,7 +26,6 @@ from conduit.services.nostr import (
     discover_from_relays,
     SKILL_EVENT_KIND,
 )
-from conduit.services.rate_limiter import rate_limiter, RateLimitExceeded
 
 
 router = APIRouter(prefix="/nostr", tags=["nostr"])
@@ -57,13 +56,6 @@ def _get_relays(override: list[str] | None = None) -> list[str]:
     if override:
         return override
     return settings.nostr_relay_list
-
-
-def _check_rate(tool_name: str):
-    try:
-        rate_limiter.check(tool_name)
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
 
 
 # --- Request/Response Models ---
@@ -130,8 +122,6 @@ async def publish_skill(
     _key: str = Depends(verify_api_key),
 ):
     """Publish a skill listing to Nostr relays."""
-    _check_rate("nostr_publish_skill")
-
     # Find the skill
     from conduit.api.routers.marketplace import _get_skill_or_404
     skill = await _get_skill_or_404(session, body.skill_id)
@@ -172,8 +162,6 @@ async def discover_skills(
     _key: str = Depends(verify_api_key),
 ):
     """Discover Conduit skills on Nostr relays."""
-    _check_rate("nostr_discover_skills")
-
     relays = _get_relays()
     window = settings.nostr_discovery_window_hours
 
@@ -198,8 +186,6 @@ async def get_profile(
     _key: str = Depends(verify_api_key),
 ):
     """Get Nostr identity for this Conduit node."""
-    _check_rate("nostr_get_profile")
-
     keys = _get_nostr_keys()
 
     skill_count = 0
@@ -225,8 +211,6 @@ async def relay_status(
     _key: str = Depends(verify_api_key),
 ):
     """Check connectivity to configured Nostr relays."""
-    _check_rate("nostr_relay_status")
-
     import asyncio
     relays = _get_relays()
     results: dict[str, str] = {}

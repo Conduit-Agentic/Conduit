@@ -30,7 +30,6 @@ from conduit.services.provider_verification import (
     get_verification_status,
     VerificationError,
 )
-from conduit.services.rate_limiter import rate_limiter, RateLimitExceeded
 
 router = APIRouter(
     prefix="/security",
@@ -66,11 +65,6 @@ class SubmitVerificationRequest(BaseModel):
 @router.get("/spending")
 async def spending_status():
     """Get current spending vs. configured limits."""
-    try:
-        rate_limiter.check("get_spending_status")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     return await get_spending_summary()
 
 
@@ -80,11 +74,6 @@ async def spending_status():
 @router.post("/macaroons")
 async def create_macaroon(req: CreateMacaroonRequest):
     """Mint a scoped authorization token."""
-    try:
-        rate_limiter.check("create_macaroon")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     try:
         mac = derive_macaroon(profile=req.profile, permissions=req.permissions)
     except ValueError as e:
@@ -100,11 +89,6 @@ async def create_macaroon(req: CreateMacaroonRequest):
 @router.get("/permissions")
 async def list_permissions():
     """Show active permissions for the current session."""
-    try:
-        rate_limiter.check("list_permissions")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     active = get_active_permissions()
     return {
         "permissions": [p.value for p in active] if active else "unrestricted",
@@ -118,11 +102,6 @@ async def list_permissions():
 @router.get("/anomalies")
 async def anomaly_report():
     """View flagged suspicious transaction patterns."""
-    try:
-        rate_limiter.check("get_anomaly_report")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     return await get_anomaly_summary()
 
 
@@ -135,11 +114,6 @@ async def request_verification(
     session: AsyncSession = Depends(get_session),
 ):
     """Start node or domain verification — returns a challenge."""
-    try:
-        rate_limiter.check("request_verification")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     try:
         if req.method == "node":
             challenge = await start_node_verification(session, req.skill_id)
@@ -177,11 +151,6 @@ async def submit_verification(
 ):
     """Complete verification with proof (signature or domain check)."""
     try:
-        rate_limiter.check("submit_verification")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
-    try:
         if req.method == "node":
             if not req.signature:
                 raise HTTPException(status_code=400, detail="Signature required for node verification")
@@ -206,11 +175,6 @@ async def verification_status(
     session: AsyncSession = Depends(get_session),
 ):
     """Check a skill's verification status and badges."""
-    try:
-        rate_limiter.check("get_verification_status")
-    except RateLimitExceeded as e:
-        raise HTTPException(status_code=429, detail=str(e))
-
     try:
         return await get_verification_status(session, skill_id)
     except VerificationError as e:
