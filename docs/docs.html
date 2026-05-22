@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conduit Docs — Lightning Payment Rails for AI Agents</title>
+    <title>Conduit Docs  - Lightning Payment Rails for AI Agents</title>
     <meta name="description" content="Complete guide to Conduit: installation, configuration, and full API reference for all 26 MCP tools.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -232,6 +232,19 @@
         @media (max-width: 900px) {
             .sidebar { display: none; }
             .content { margin-left: 0; padding: 5rem 1.5rem 3rem; }
+            nav { padding: 0.75rem 1rem; }
+            .nav-links { gap: 0.75rem; }
+            .nav-links a { font-size: 0.8rem; }
+            .btn { padding: 0.5rem 0.8rem; font-size: 0.8rem; }
+            h1 { font-size: 1.75rem; }
+            h2 { font-size: 1.35rem; }
+        }
+        @media (max-width: 480px) {
+            .nav-links { gap: 0.5rem; }
+            .nav-links a { font-size: 0.75rem; }
+            .btn { padding: 0.4rem 0.6rem; font-size: 0.75rem; }
+            .logo { font-size: 1rem; }
+            .logo-icon { width: 24px; height: 24px; font-size: 0.75rem; }
         }
     </style>
 </head>
@@ -296,7 +309,7 @@
     Without Conduit, an AI agent that wants to buy a service from another agent has no way to pay for it. Credit cards require human identity. Bank transfers are slow. Crypto on-chain transactions take minutes and cost fees. Lightning payments settle in <strong>under a second</strong> with fees measured in fractions of a penny.
 </p>
 <p>
-    Conduit provides 26 tools that an AI agent (like Claude) can use to discover skills, pay invoices, verify providers, and manage spending &mdash; all through the <strong>Model Context Protocol (MCP)</strong> or a <strong>REST API</strong>.
+    Conduit provides 26 tools that an AI agent (like Claude) can use to discover skills, pay invoices, verify providers, and manage spending  - all through the <strong>Model Context Protocol (MCP)</strong> or a <strong>REST API</strong>.
 </p>
 
 <h3>Key principles</h3>
@@ -304,7 +317,7 @@
     <li><strong>Non-custodial:</strong> Payments flow directly between agents on Lightning. Conduit never holds your funds.</li>
     <li><strong>Your node, your sats:</strong> You connect your own LND node. No middleman.</li>
     <li><strong>Proof-based trust:</strong> Ratings require payment proof. Providers verify with node signatures and DNS. No fake reviews.</li>
-    <li><strong>Decentralized discovery:</strong> Skills are published to Nostr relays &mdash; no central registry controls who can list services.</li>
+    <li><strong>Decentralized discovery:</strong> Skills are published to Nostr relays  - no central registry controls who can list services.</li>
 </ul>
 
 <h2 id="how-lightning-works">Lightning in 60 Seconds</h2>
@@ -318,7 +331,7 @@
     <strong>Lightning Network</strong> is a layer built on top of Bitcoin. Two parties open a "payment channel" by locking some Bitcoin on-chain. Once open, they can send unlimited payments back and forth <strong>instantly</strong> and for <strong>nearly zero fees</strong>. Payments can route through multiple channels to reach anyone on the network.
 </p>
 <p>
-    <strong>Satoshis (sats)</strong> are the smallest unit of Bitcoin. 1 Bitcoin = 100,000,000 sats. A typical skill on Conduit costs 50&ndash;200 sats (a fraction of a cent).
+    <strong>Satoshis (sats)</strong> are the smallest unit of Bitcoin. 1 Bitcoin = 100,000,000 sats. A typical skill on Conduit costs 50-200 sats (a fraction of a cent).
 </p>
 <p>
     <strong>Invoices</strong> are how you request payment on Lightning. A provider creates an invoice for a specific amount. The consumer pays it. The payment settles instantly and the provider receives cryptographic proof (a "preimage") that the payment was made.
@@ -375,9 +388,9 @@ alembic upgrade head</code></pre>
 <h3>Prerequisites</h3>
 <ul>
     <li><strong>Python 3.11+</strong></li>
-    <li><strong>PostgreSQL</strong> &mdash; stores skills, executions, ratings, anomaly flags</li>
-    <li><strong>Redis</strong> &mdash; powers rate limiting</li>
-    <li><strong>LND node</strong> &mdash; your Lightning node (Start9, Umbrel, or standalone)</li>
+    <li><strong>PostgreSQL</strong>  - stores skills, executions, ratings, anomaly flags</li>
+    <li><strong>Redis</strong>  - powers rate limiting</li>
+    <li><strong>LND node</strong>  - your Lightning node (Start9, Umbrel, or standalone)</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -391,7 +404,7 @@ alembic upgrade head</code></pre>
 <h3>App settings</h3>
 <pre><code>APP_NAME=Conduit
 APP_ENV=development       # or "production"
-DEBUG=false               # NEVER true with MCP — corrupts stdio
+DEBUG=false               # NEVER true with MCP  - corrupts stdio
 API_HOST=0.0.0.0
 API_PORT=8000</code></pre>
 
@@ -510,17 +523,17 @@ get_node_info
     comment="Fast and accurate"
 )
 
-# Rating requires payment proof — no fake reviews.</code></pre>
+# Rating requires payment proof  - no fake reviews.</code></pre>
 
 <div class="callout success">
-    <strong>That's it!</strong> The entire flow &mdash; from discovery to payment to execution to rating &mdash; is handled by the AI agent through Conduit tools. The human only needs to approve large payments (above the confirmation threshold).
+    <strong>That's it!</strong> The entire flow  - from discovery to payment to execution to rating  - is handled by the AI agent through Conduit tools. The human only needs to approve large payments (above the confirmation threshold).
 </div>
 
 <!-- ================================================================== -->
 <!-- TOOL REFERENCE: LIGHTNING -->
 <!-- ================================================================== -->
 <h2 id="lightning-tools">Lightning Tools <span class="badge lightning">6 tools</span></h2>
-<p>Core Lightning Network operations &mdash; create invoices, send payments, check balances, and inspect transactions.</p>
+<p>Core Lightning Network operations  - create invoices, send payments, check balances, and inspect transactions.</p>
 
 <div class="tool-card" id="tool-get-node-info">
     <div class="tool-name">get_node_info</div>
@@ -646,7 +659,7 @@ get_node_info
 
 <div class="tool-card" id="tool-submit-rating">
     <div class="tool-name">submit_rating</div>
-    <div class="tool-desc">Rate a skill execution. Requires the payment preimage as proof that you actually paid for the skill &mdash; no fake reviews.</div>
+    <div class="tool-desc">Rate a skill execution. Requires the payment preimage as proof that you actually paid for the skill  - no fake reviews.</div>
     <table class="param-table">
         <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
         <tr><td>execution_id</td><td>string</td><td><span class="param-required">required</span></td><td>The execution to rate</td></tr>
@@ -775,7 +788,7 @@ get_node_info
 
 <div class="tool-card" id="tool-create-l402-token">
     <div class="tool-name">create_l402_token</div>
-    <div class="tool-desc">Create an L402 access token: mints a Lightning invoice and a bound macaroon. The caller pays the invoice, then presents <code>Authorization: L402 &lt;macaroon&gt;:&lt;preimage&gt;</code> to access protected endpoints. Stateless verification &mdash; no DB lookup needed.</div>
+    <div class="tool-desc">Create an L402 access token: mints a Lightning invoice and a bound macaroon. The caller pays the invoice, then presents <code>Authorization: L402 &lt;macaroon&gt;:&lt;preimage&gt;</code> to access protected endpoints. Stateless verification  - no DB lookup needed.</div>
     <table class="param-table">
         <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
         <tr><td>amount_sats</td><td>integer</td><td><span class="param-required">required</span></td><td>Price in satoshis for the token</td></tr>
@@ -812,15 +825,15 @@ get_node_info
     Conduit sits between AI agents and the Lightning Network. Every request passes through three middleware layers before reaching your node:
 </p>
 <ul>
-    <li><strong>Rate Limiting</strong> &mdash; per-tool sliding window with 429 + Retry-After headers</li>
-    <li><strong>L402 / API Key Auth</strong> &mdash; either a pre-shared API key or pay-per-request L402 tokens</li>
-    <li><strong>Verification Enforcement</strong> &mdash; warn or block unverified providers based on policy</li>
+    <li><strong>Rate Limiting</strong>  - per-tool sliding window with 429 + Retry-After headers</li>
+    <li><strong>L402 / API Key Auth</strong>  - either a pre-shared API key or pay-per-request L402 tokens</li>
+    <li><strong>Verification Enforcement</strong>  - warn or block unverified providers based on policy</li>
 </ul>
 <p>
     The core layer provides 26 MCP tools and REST API endpoints covering Lightning payments, a skill marketplace, Nostr discovery, macaroon auth, spending limits, and anomaly detection.
 </p>
 <p>
-    At the bottom is your LND node &mdash; your channels, your sats, your keys. Conduit coordinates but never takes custody.
+    At the bottom is your LND node  - your channels, your sats, your keys. Conduit coordinates but never takes custody.
 </p>
 
 <h2 id="macaroons">Macaroon Auth</h2>
@@ -831,10 +844,10 @@ get_node_info
     Conduit ships with four built-in profiles:
 </p>
 <ul>
-    <li><strong>admin</strong> &mdash; full access to all 26 tools</li>
-    <li><strong>readonly</strong> &mdash; view balances, discover skills, check status (no payments, no writes)</li>
-    <li><strong>marketplace</strong> &mdash; skill discovery and execution only (no direct Lightning operations)</li>
-    <li><strong>spending</strong> &mdash; Lightning payments + skill execution (no skill registration)</li>
+    <li><strong>admin</strong>  - full access to all 26 tools</li>
+    <li><strong>readonly</strong>  - view balances, discover skills, check status (no payments, no writes)</li>
+    <li><strong>marketplace</strong>  - skill discovery and execution only (no direct Lightning operations)</li>
+    <li><strong>spending</strong>  - Lightning payments + skill execution (no skill registration)</li>
 </ul>
 <p>
     Use <code>create_macaroon</code> to mint tokens for different agents with appropriate access levels.
@@ -845,10 +858,10 @@ get_node_info
     Spending limits prevent runaway costs from AI agents. Every payment goes through four checks:
 </p>
 <ul>
-    <li><strong>Per-payment cap</strong> &mdash; reject any single payment above the limit</li>
-    <li><strong>Hourly limit</strong> &mdash; sliding window, resets automatically</li>
-    <li><strong>Daily limit</strong> &mdash; 24-hour sliding window</li>
-    <li><strong>Confirmation threshold</strong> &mdash; payments above this amount require human approval via a one-shot confirmation token</li>
+    <li><strong>Per-payment cap</strong>  - reject any single payment above the limit</li>
+    <li><strong>Hourly limit</strong>  - sliding window, resets automatically</li>
+    <li><strong>Daily limit</strong>  - 24-hour sliding window</li>
+    <li><strong>Confirmation threshold</strong>  - payments above this amount require human approval via a one-shot confirmation token</li>
 </ul>
 <p>
     The confirmation token is cryptographically bound to the specific payment (tool, amount, payment hash) and expires in ~2 minutes. An agent cannot bypass this by simply retrying.
@@ -859,8 +872,8 @@ get_node_info
     Verification proves a skill provider is who they claim to be. Two methods:
 </p>
 <ul>
-    <li><strong>Node verification</strong> &mdash; the provider signs a challenge message with their Lightning node's private key using <code>lncli signmessage</code>. This proves they control a real, funded node.</li>
-    <li><strong>Domain verification</strong> &mdash; the provider places a challenge file at <code>https://example.com/.well-known/conduit-verify.txt</code>. This proves they control the domain via DNS TXT record verification.</li>
+    <li><strong>Node verification</strong>  - the provider signs a challenge message with their Lightning node's private key using <code>lncli signmessage</code>. This proves they control a real, funded node.</li>
+    <li><strong>Domain verification</strong>  - the provider places a challenge file at <code>https://example.com/.well-known/conduit-verify.txt</code>. This proves they control the domain via DNS TXT record verification.</li>
 </ul>
 <p>
     Verification badges are shown in marketplace listings. Badges expire and must be renewed periodically to ensure ongoing control.
