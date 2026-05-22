@@ -544,33 +544,120 @@
     </div>
 </section>
 
-<!-- Code snippet -->
-<section class="section">
-    <div class="code-section">
-        <div class="code-header">
-            <span class="code-dot red"></span>
-            <span class="code-dot yellow"></span>
-            <span class="code-dot green"></span>
+<!-- Use Cases -->
+<section class="section" id="use-cases">
+    <div class="section-label">See it in action</div>
+    <h2>Two ways to use Conduit</h2>
+    <p class="section-desc">
+        Whether you're chatting with Claude or building autonomous agents, Conduit handles the payments.
+    </p>
+
+    <!-- Tab switcher -->
+    <div style="display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid var(--border);">
+        <button id="tab-human" onclick="switchTab('human')" style="flex: 1; padding: 0.75rem 1rem; background: var(--bg-card); color: var(--accent); border: 1px solid var(--border); border-bottom: 2px solid var(--accent); border-radius: 8px 8px 0 0; cursor: pointer; font-family: inherit; font-size: 0.9rem; font-weight: 600;">
+            Human + Claude Desktop
+        </button>
+        <button id="tab-agent" onclick="switchTab('agent')" style="flex: 1; padding: 0.75rem 1rem; background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); border-bottom: 1px solid var(--border); border-radius: 8px 8px 0 0; cursor: pointer; font-family: inherit; font-size: 0.9rem; font-weight: 500;">
+            Autonomous AI Agent
+        </button>
+    </div>
+
+    <!-- Human + Claude tab -->
+    <div id="panel-human" class="code-section" style="border-radius: 0 0 12px 12px; margin-top: 0; border-top: none;">
+        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.6;">
+            A human talks to Claude normally. Claude uses Conduit's MCP tools behind the scenes.
         </div>
-<pre><span class="comment"># An AI agent paying for a skill — that's it</span>
+<pre style="background: rgba(247, 147, 26, 0.05); border: 1px solid rgba(247, 147, 26, 0.15); border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem;">
+<span class="comment">User:</span> Find me a cheap translation service
 
-skill = <span class="func">discover_skills</span>(keyword=<span class="string">"translate"</span>, max_price=<span class="string">50</span>)
+<span class="comment">Claude:</span> I found "English to Spanish Translation" by LangBot
+         for 50 sats (~$0.003). Want me to use it?
 
-execution = <span class="func">request_skill_execution</span>(
-    skill_id=skill[<span class="string">"id"</span>],
-    input_data={<span class="string">"text"</span>: <span class="string">"Hello world"</span>, <span class="string">"target"</span>: <span class="string">"es"</span>}
-)
+<span class="comment">User:</span> Yes, translate "Hello world" to Spanish
 
-<span class="comment"># Pay the Lightning invoice (settles in ~1 second)</span>
-payment = <span class="func">pay_invoice</span>(payment_request=execution[<span class="string">"payment_request"</span>])
+<span class="comment">Claude:</span> Done! Payment of 50 sats settled in 0.8 seconds.
+         Result: "Hola mundo"
+</pre>
+        <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.6;">
+            Behind the scenes, Claude called <span style="color: var(--accent);">discover_skills</span> >
+            <span style="color: var(--accent);">request_skill_execution</span> >
+            <span style="color: var(--accent);">pay_invoice</span> >
+            <span style="color: var(--accent);">confirm_skill_execution</span>.
+            The human never sees invoices, payment hashes, or preimages.
+        </div>
+    </div>
 
-<span class="comment"># Confirm with cryptographic proof of payment</span>
-result = <span class="func">confirm_skill_execution</span>(
-    execution_id=execution[<span class="string">"execution_id"</span>],
-    payment_hash=payment[<span class="string">"payment_hash"</span>]
-)</pre>
+    <!-- Autonomous Agent tab -->
+    <div id="panel-agent" class="code-section" style="border-radius: 0 0 12px 12px; margin-top: 0; border-top: none; display: none;">
+        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.6;">
+            An autonomous agent calls the REST API directly. No human in the loop. Spending limits are the guardrails.
+        </div>
+<pre><span class="comment"># Autonomous agent using Conduit's REST API</span>
+<span class="comment"># No human needed - spending limits keep it safe</span>
+
+<span class="keyword">import</span> httpx
+
+API = <span class="string">"http://localhost:8000"</span>
+HEADERS = {<span class="string">"X-API-Key"</span>: <span class="string">"your-conduit-api-key"</span>}
+
+<span class="comment"># 1. Find a skill</span>
+skills = httpx.<span class="func">get</span>(
+    f<span class="string">"{API}/api/v1/skills?query=translate&max_price=100"</span>,
+    headers=HEADERS
+).<span class="func">json</span>()
+
+<span class="comment"># 2. Request execution (gets a Lightning invoice)</span>
+execution = httpx.<span class="func">post</span>(
+    f<span class="string">"{API}/api/v1/skills/{skills[0]['id']}/execute"</span>,
+    headers=HEADERS,
+    json={<span class="string">"input_data"</span>: {<span class="string">"text"</span>: <span class="string">"Hello"</span>, <span class="string">"target"</span>: <span class="string">"es"</span>}}
+).<span class="func">json</span>()
+
+<span class="comment"># 3. Pay the invoice (auto-approved under spending limit)</span>
+payment = httpx.<span class="func">post</span>(
+    f<span class="string">"{API}/api/v1/lightning/pay"</span>,
+    headers=HEADERS,
+    json={<span class="string">"payment_request"</span>: execution[<span class="string">"payment_request"</span>]}
+).<span class="func">json</span>()
+
+<span class="comment"># 4. Confirm and get results</span>
+result = httpx.<span class="func">post</span>(
+    f<span class="string">"{API}/api/v1/executions/{execution['id']}/confirm"</span>,
+    headers=HEADERS,
+    json={<span class="string">"payment_preimage"</span>: payment[<span class="string">"preimage"</span>]}
+).<span class="func">json</span>()
+
+<span class="func">print</span>(result[<span class="string">"output"</span>])  <span class="comment"># {"translated_text": "Hola"}</span>
+</pre>
+        <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.6;">
+            The agent runs 24/7 without human oversight. Spending limits (per-payment, hourly, daily)
+            prevent runaway costs. Payments above the threshold are blocked until a human approves.
+        </div>
     </div>
 </section>
+
+<script>
+function switchTab(tab) {
+    const tabs = ['human', 'agent'];
+    tabs.forEach(t => {
+        const btn = document.getElementById('tab-' + t);
+        const panel = document.getElementById('panel-' + t);
+        if (t === tab) {
+            panel.style.display = 'block';
+            btn.style.background = 'var(--bg-card)';
+            btn.style.color = 'var(--accent)';
+            btn.style.fontWeight = '600';
+            btn.style.borderBottom = '2px solid var(--accent)';
+        } else {
+            panel.style.display = 'none';
+            btn.style.background = 'var(--bg-secondary)';
+            btn.style.color = 'var(--text-secondary)';
+            btn.style.fontWeight = '500';
+            btn.style.borderBottom = '1px solid var(--border)';
+        }
+    });
+}
+</script>
 
 <!-- Features -->
 <section class="section" id="features">
