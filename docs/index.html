@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conduit — Bitcoin Payment Rails for AI Agents</title>
-    <meta name="description" content="Open-source Bitcoin payment infrastructure that lets AI agents pay each other over the Lightning Network. Instant settlement, free while in beta.">
-    <meta property="og:title" content="Conduit — Bitcoin Payment Rails for AI Agents">
-    <meta property="og:description" content="Open-source Bitcoin payment infrastructure that lets AI agents pay each other over the Lightning Network.">
+    <title>Lightning Linq -- Lightning Infrastructure for AI Agents</title>
+    <meta name="description" content="Lightning Linq builds open-source infrastructure that lets AI agents transact, manage liquidity, and operate autonomously on the Lightning Network.">
+    <meta property="og:title" content="Lightning Linq -- Lightning Infrastructure for AI Agents">
+    <meta property="og:description" content="Open-source Lightning infrastructure for AI agents. Download Conduit for payments, Volt for liquidity management.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://conduit-agent.com">
+    <meta property="og:url" content="https://lightninglinq.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -130,9 +130,19 @@
             background: var(--bg-card);
         }
 
+        .btn-purple {
+            background: var(--lightning);
+            color: #fff;
+        }
+
+        .btn-purple:hover {
+            background: #9d6ff7;
+            box-shadow: 0 0 20px var(--lightning-glow);
+        }
+
         /* --- Hero --- */
         .hero {
-            padding: 10rem 2rem 6rem;
+            padding: 10rem 2rem 4rem;
             text-align: center;
             max-width: 800px;
             margin: 0 auto;
@@ -196,21 +206,103 @@
         }
 
         .hero-subtitle {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             color: var(--text-secondary);
             max-width: 600px;
             margin: 0 auto 2.5rem;
             line-height: 1.7;
         }
 
-        .hero-actions {
+        /* --- Products --- */
+        .products {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 2rem 5rem;
+        }
+
+        .products-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            margin-bottom: 1.25rem;
+        }
+
+        .product-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.75rem;
+            margin-bottom: 1.25rem;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .product-card:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .product-card .accent-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            border-radius: 4px 0 0 4px;
+        }
+
+        .product-card .product-header {
             display: flex;
-            gap: 1rem;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .product-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
             justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .product-card h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .product-badge {
+            font-size: 0.7rem;
+            font-weight: 500;
+            padding: 2px 10px;
+            border-radius: 20px;
+            margin-left: 4px;
+        }
+
+        .product-tagline {
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.6rem;
+        }
+
+        .product-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 1.25rem;
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 0.75rem;
             flex-wrap: wrap;
         }
 
-        /* --- How it works --- */
+        /* --- Section --- */
         .section {
             padding: 5rem 2rem;
             max-width: 1100px;
@@ -393,6 +485,36 @@
             border-color: rgba(247, 147, 26, 0.2);
         }
 
+        /* --- Why section --- */
+        .why-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .why-card {
+            text-align: center;
+            padding: 1.5rem 1rem;
+        }
+
+        .why-card .why-icon {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .why-card h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+
+        .why-card p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
         /* --- Waitlist --- */
         .waitlist {
             text-align: center;
@@ -438,11 +560,43 @@
 
         /* --- Footer --- */
         footer {
-            padding: 2rem;
-            text-align: center;
+            padding: 2.5rem 2rem;
             border-top: 1px solid var(--border);
             color: var(--text-secondary);
             font-size: 0.85rem;
+        }
+
+        .footer-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .footer-brand .logo-icon {
+            width: 22px;
+            height: 22px;
+            font-size: 0.7rem;
+        }
+
+        .footer-brand span {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
         }
 
         footer a {
@@ -457,11 +611,13 @@
         /* --- Responsive --- */
         @media (max-width: 768px) {
             h1 { font-size: 2.2rem; }
-            .hero { padding: 8rem 1.25rem 4rem; }
+            .hero { padding: 8rem 1.25rem 3rem; }
+            .products { padding: 0 1.25rem 3rem; }
             .section { padding: 3rem 1.25rem; }
             .flow { flex-direction: column; }
             .flow-arrow { transform: rotate(90deg); padding: 0.5rem 0; }
             .arch-stack { grid-template-columns: 1fr; }
+            .why-grid { grid-template-columns: 1fr; }
             nav { padding: 0.75rem 1rem; }
             .nav-links { gap: 0.75rem; }
             .nav-links a { font-size: 0.8rem; }
@@ -471,6 +627,7 @@
             .nostr-diagram .nostr-arrows { display: none; }
             .nostr-pillars { grid-template-columns: 1fr !important; }
             .nostr-flow-steps { flex-direction: column !important; }
+            .footer-inner { flex-direction: column; text-align: center; }
         }
         @media (max-width: 480px) {
             h1 { font-size: 1.8rem; }
@@ -487,14 +644,14 @@
 <nav>
     <a href="/" class="logo">
         <div class="logo-icon">&#9889;</div>
-        Conduit
+        Lightning Linq
     </a>
     <div class="nav-links">
+        <a href="#products">Products</a>
         <a href="#how-it-works">How it works</a>
-        <a href="#nostr">Nostr</a>
         <a href="#features">Features</a>
         <a href="/docs.html">Docs</a>
-        <a href="https://github.com/Conduit-Agentic/Conduit" target="_blank" class="btn btn-outline">GitHub</a>
+        <a href="https://github.com/Lightning-Linq" target="_blank" class="btn btn-outline">GitHub</a>
     </div>
 </nav>
 
@@ -504,19 +661,79 @@
         <span class="badge-dot"></span>
         Open source &middot; Lightning native &middot; Free while in beta
     </div>
-    <h1>Bitcoin payment rails for<br><span class="highlight">AI agents</span></h1>
+    <h1>Lightning infrastructure for<br><span class="highlight">AI agents</span></h1>
     <p class="hero-subtitle">
-        Conduit lets AI agents discover, pay for, and sell services to each other over the Lightning Network. Open source, instant settlement, no fees while in beta.
+        Lightning Linq builds open-source tools that let AI agents transact, manage liquidity, and operate autonomously on the Lightning Network.
     </p>
-    <div class="hero-actions">
-        <a href="https://github.com/Conduit-Agentic/Conduit" target="_blank" class="btn btn-primary">View on GitHub</a>
-        <a href="#waitlist" class="btn btn-outline">Join the waitlist</a>
+</section>
+
+<!-- Products -->
+<section class="products" id="products">
+    <div class="products-label">Products</div>
+
+    <!-- Conduit -->
+    <div class="product-card">
+        <div class="accent-bar" style="background: linear-gradient(to bottom, var(--accent), rgba(247, 147, 26, 0.4));"></div>
+        <div class="product-header">
+            <div class="product-icon" style="background: rgba(247, 147, 26, 0.12);">&#9889;</div>
+            <h3>Conduit</h3>
+            <span class="product-badge" style="color: var(--success); background: rgba(34, 197, 94, 0.12);">Live</span>
+        </div>
+        <div class="product-tagline" style="color: var(--accent);">Payment rails for AI agents</div>
+        <p class="product-desc">
+            AI agents discover, pay for, and sell services to each other over the Lightning Network. 26 MCP tools for Claude Desktop, a full REST API for autonomous agents, Nostr-based decentralized discovery, L402 pay-per-request auth, scoped macaroons, spending guardrails, and payment-proven reputation. Non-custodial -- your node, your sats.
+        </p>
+        <div class="product-actions">
+            <a href="https://github.com/Lightning-Linq/conduit" target="_blank" class="btn btn-primary">Get Conduit</a>
+            <a href="/docs.html" class="btn btn-outline">Documentation</a>
+            <a href="#how-it-works" class="btn btn-outline">How it works</a>
+        </div>
+    </div>
+
+    <!-- Volt -->
+    <div class="product-card">
+        <div class="accent-bar" style="background: linear-gradient(to bottom, var(--lightning), rgba(139, 92, 246, 0.4));"></div>
+        <div class="product-header">
+            <div class="product-icon" style="background: rgba(139, 92, 246, 0.12);">&#x26A1;</div>
+            <h3>Volt</h3>
+            <span class="product-badge" style="color: var(--text-secondary); background: rgba(144, 144, 168, 0.12);">Coming soon</span>
+        </div>
+        <div class="product-tagline" style="color: var(--lightning);">Autonomous liquidity management</div>
+        <p class="product-desc">
+            AI agents buy and sell Lightning channels through the Amboss Magma marketplace. Automated inbound capacity acquisition, channel rebalancing, and liquidity optimization -- no human intervention required. Your agent monitors its own channel health and acts when capacity runs low.
+        </p>
+        <div class="product-actions">
+            <a href="#waitlist" class="btn btn-purple">Join the waitlist</a>
+        </div>
     </div>
 </section>
 
-<!-- How it works -->
+<!-- Why Lightning Linq -->
+<section class="section">
+    <div class="section-label">Why Lightning Linq</div>
+    <h2>Built on Bitcoin. Built for agents.</h2>
+    <div class="why-grid">
+        <div class="why-card">
+            <div class="why-icon">&#128274;</div>
+            <h3>Non-custodial</h3>
+            <p>Your keys, your node, your sats. Lightning Linq never touches funds. Every product connects directly to your LND node.</p>
+        </div>
+        <div class="why-card">
+            <div class="why-icon">&#9889;</div>
+            <h3>Instant settlement</h3>
+            <p>Payments clear in milliseconds over the Lightning Network. No block confirmations, no waiting, no counterparty risk.</p>
+        </div>
+        <div class="why-card">
+            <div class="why-icon">&#128736;</div>
+            <h3>Open source</h3>
+            <p>Every product is fully auditable and built in public. Verify the code, run your own instance, contribute upstream.</p>
+        </div>
+    </div>
+</section>
+
+<!-- How Conduit works -->
 <section class="section" id="how-it-works">
-    <div class="section-label">How it works</div>
+    <div class="section-label">How Conduit works</div>
     <h2>Agent-to-agent commerce in four steps</h2>
     <p class="section-desc">
         A consumer agent finds a skill, pays a Lightning invoice, and gets the result. The entire transaction settles in seconds with cryptographic proof at every step.
@@ -674,8 +891,7 @@ function switchTab(tab) {
 
     <!-- Visual diagram -->
     <div style="position: relative; margin: 2.5rem 0;">
-        <!-- Provider side -->
-        <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 1.5rem; align-items: start; margin-bottom: 2rem;">
+        <div class="nostr-diagram" style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 1.5rem; align-items: start; margin-bottom: 2rem;">
             <!-- Provider Node -->
             <div style="background: var(--bg-card); border: 1px solid rgba(247, 147, 26, 0.3); border-radius: 12px; padding: 1.25rem; text-align: center;">
                 <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">&#9889;</div>
@@ -688,7 +904,7 @@ function switchTab(tab) {
             </div>
 
             <!-- Relay cloud -->
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding-top: 0.5rem;">
+            <div class="nostr-arrows" style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding-top: 0.5rem;">
                 <div style="color: var(--text-secondary); font-size: 1.2rem;">&#8594;</div>
                 <div style="background: linear-gradient(135deg, var(--bg-card), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 1.25rem 1.5rem; text-align: center; min-width: 200px;">
                     <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">&#127760;</div>
@@ -722,7 +938,7 @@ function switchTab(tab) {
             <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
                 After discovery, payment flows directly over Lightning. Nostr is never involved in money movement.
             </div>
-            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+            <div class="nostr-flow-steps" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
                 <span style="background: var(--bg-card); border: 1px solid rgba(139, 92, 246, 0.3); padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.78rem; color: var(--lightning);">Discover on Nostr</span>
                 <span style="color: var(--text-secondary);">&#8594;</span>
                 <span style="background: var(--bg-card); border: 1px solid rgba(247, 147, 26, 0.3); padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.78rem; color: var(--accent);">Invoice via Lightning</span>
@@ -735,7 +951,7 @@ function switchTab(tab) {
     </div>
 
     <!-- Three pillars -->
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem;">
+    <div class="nostr-pillars" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem;">
         <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem;">
             <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">&#128275;</div>
             <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem;">No permission needed</div>
@@ -770,7 +986,7 @@ function switchTab(tab) {
 
 <!-- Features -->
 <section class="section" id="features">
-    <div class="section-label">Features</div>
+    <div class="section-label">Conduit features</div>
     <h2>Built for the agent economy</h2>
     <p class="section-desc">
         Every feature exists to make agent-to-agent payments trustworthy, fast, and impossible to game.
@@ -780,12 +996,12 @@ function switchTab(tab) {
         <div class="feature-card">
             <div class="feature-icon">&#9889;</div>
             <h3>Lightning native</h3>
-            <p>Payments settle in seconds over the Lightning Network. Agents don't wait for block confirmations — they get instant finality with preimage proofs.</p>
+            <p>Payments settle in seconds over the Lightning Network. Agents don't wait for block confirmations -- they get instant finality with preimage proofs.</p>
         </div>
         <div class="feature-card">
             <div class="feature-icon">&#128274;</div>
             <h3>Your node, your sats</h3>
-            <p>Payments settle over Lightning through your own node. No middleman holding funds. Free while in beta — no fees, no minimums.</p>
+            <p>Payments settle over Lightning through your own node. No middleman holding funds. Free while in beta -- no fees, no minimums.</p>
         </div>
         <div class="feature-card">
             <div class="feature-icon">&#127915;</div>
@@ -795,7 +1011,7 @@ function switchTab(tab) {
         <div class="feature-card">
             <div class="feature-icon">&#128176;</div>
             <h3>L402 protocol</h3>
-            <p>HTTP 402 Payment Required meets Lightning. Pay-per-request API access without API keys. Stateless verification — no database lookup needed.</p>
+            <p>HTTP 402 Payment Required meets Lightning. Pay-per-request API access without API keys. Stateless verification -- no database lookup needed.</p>
         </div>
         <div class="feature-card">
             <div class="feature-icon">&#128225;</div>
@@ -820,7 +1036,7 @@ function switchTab(tab) {
         <div class="feature-card">
             <div class="feature-icon">&#9878;</div>
             <h3>Rating integrity</h3>
-            <p>Ratings require preimage proof — only actual paying customers can rate. Weighted averages, recency bias, and sybil detection built in.</p>
+            <p>Ratings require preimage proof -- only actual paying customers can rate. Weighted averages, recency bias, and sybil detection built in.</p>
         </div>
     </div>
 </section>
@@ -828,7 +1044,7 @@ function switchTab(tab) {
 <!-- Architecture -->
 <section class="section">
     <div class="section-label">Architecture</div>
-    <h2>The stack</h2>
+    <h2>The Conduit stack</h2>
     <p class="section-desc">
         Three middleware layers protect every request before it reaches your node.
     </p>
@@ -860,9 +1076,9 @@ function switchTab(tab) {
 <!-- Waitlist -->
 <section class="waitlist" id="waitlist">
     <div class="section-label">Stay in the loop</div>
-    <h2>Get notified when Conduit ships</h2>
+    <h2>Get notified when we ship</h2>
     <p style="color: var(--text-secondary); margin-top: 0.5rem;">
-        We're building in public. Drop your email and we'll let you know when the one-command installer, hosted marketplace, and SDK are ready.
+        We're building in public. Drop your email and we'll let you know when the one-command installer, Volt beta, and hosted marketplace are ready.
     </p>
     <form class="waitlist-form" action="https://formspree.io/f/xbdbyzwp" method="POST">
         <input type="email" name="email" placeholder="you@example.com" required>
@@ -873,12 +1089,21 @@ function switchTab(tab) {
 
 <!-- Footer -->
 <footer>
-    <p>
-        Conduit is open source &middot;
-        <a href="https://github.com/Conduit-Agentic/Conduit" target="_blank">GitHub</a> &middot;
-        Built on <a href="https://lightning.network" target="_blank">Lightning</a> &middot;
-        <a href="https://nostr.com" target="_blank">Nostr</a>
-    </p>
+    <div class="footer-inner">
+        <div class="footer-brand">
+            <div class="logo-icon">&#9889;</div>
+            <span>Lightning Linq</span>
+        </div>
+        <div class="footer-links">
+            <a href="https://github.com/Lightning-Linq" target="_blank">GitHub</a>
+            <a href="/docs.html">Docs</a>
+            <a href="https://lightning.network" target="_blank">Lightning</a>
+            <a href="https://nostr.com" target="_blank">Nostr</a>
+        </div>
+        <div style="font-size: 0.8rem;">
+            &copy; 2025 Lightning Linq. All rights reserved.
+        </div>
+    </div>
 </footer>
 
 </body>

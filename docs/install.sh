@@ -4,7 +4,7 @@
 # Lightning Payment Rails for AI Agents
 #
 # Usage:
-#   curl -sSL conduit-agent.com/install.sh | bash
+#   curl -sSL lightninglinq.com/install.sh | bash
 #
 # What this does:
 #   1. Checks your system (macOS or Linux)
@@ -31,7 +31,7 @@ PURPLE='\033[0;35m'
 NC='\033[0m'
 
 CONDUIT_DIR="$HOME/conduit"
-REPO_URL="https://github.com/Conduit-Agentic/Conduit.git"
+REPO_URL="https://github.com/Lightning-Linq/conduit.git"
 
 print_logo() {
     echo ""
@@ -545,8 +545,8 @@ print_summary() {
     echo -e "  ${DIM}  Tests:      cd ~/conduit && pytest${NC}"
     echo ""
     echo -e "  ${BOLD}Links:${NC}"
-    echo -e "  ${DIM}  Docs:       https://conduit-agent.com${NC}"
-    echo -e "  ${DIM}  GitHub:     https://github.com/Conduit-Agentic/Conduit${NC}"
+    echo -e "  ${DIM}  Docs:       https://lightninglinq.com/docs.html${NC}"
+    echo -e "  ${DIM}  GitHub:     https://github.com/Lightning-Linq/conduit${NC}"
     echo -e "  ${DIM}  API:        http://localhost:8000/docs${NC}"
     echo ""
     echo -e "  ${ORANGE}⚡${NC} ${BOLD}Happy building!${NC}"
